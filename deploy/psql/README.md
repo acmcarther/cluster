@@ -1,3 +1,0 @@
-# psql
-
-- postgres

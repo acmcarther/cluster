@@ -1,0 +1,82 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "prometheus-alertmanager"
+  labels:
+    app: "prometheus"
+    component: "alertmanager"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: "prometheus"
+        component: "alertmanager"
+    spec:
+      serviceAccountName: "prometheus-alertmanager"
+      containers:
+        - name: "prometheus-alertmanager"
+          image: "prom/alertmanager:v0.9.1"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --config.file=/etc/config/alertmanager.yml
+            - --storage.path=/data
+          ports:
+            - containerPort: 9093
+          readinessProbe:
+            httpGet:
+              path: /#/status
+              port: 9093
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+            - name: storage-volume
+              mountPath: "/data"
+              subPath: ""
+
+        - name: "prometheus-alertmanager-configmap-reloader"
+          image: "jimmidyson/configmap-reload:v0.1"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --volume-dir=/etc/config
+            - --webhook-url=http://localhost:9093/-/reload
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: "prometheus-alertmanager"
+        - name: storage-volume
+          persistentVolumeClaim:
+            claimName: "prometheus-alertmanager"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "prometheus-alertmanager"
+  labels:
+    app: "prometheus"
+    component: "alertmanager"
+spec:
+  externalIPs: []
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 9093
+  selector:
+    app: "prometheus"
+    component: "alertmanager"
+  type: "ClusterIP"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: "prometheus"
+    component: "alertmanager"
+  name: "prometheus-alertmanager"

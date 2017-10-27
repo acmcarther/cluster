@@ -1,4 +1,0 @@
-# sys-mon
-
-- prometheus
-- grafana

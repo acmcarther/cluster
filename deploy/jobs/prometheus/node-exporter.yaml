@@ -1,0 +1,71 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: 'prometheus'
+    component: 'nodeexporter'
+  name: 'prometheus-nodeexporter'
+spec:
+  template:
+    metadata:
+      labels:
+        app: 'prometheus'
+        component: 'nodeexporter'
+    spec:
+      serviceAccountName: 'prometheus-nodeexporter'
+      containers:
+        - name: 'prometheus-nodeexporter'
+          image: 'prom/node-exporter:v0.15.0'
+          imagePullPolicy: 'IfNotPresent'
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+          ports:
+            - name: metrics
+              containerPort: 9100
+              hostPort: 9100
+          resources: {}
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly:  true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+      hostNetwork: true
+      hostPID: true
+      nodeSelector: {}
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: 'prometheus'
+    component: 'nodeexporter'
+  name: 'prometheus-nodeexporter'
+spec:
+  externalIPs: []
+  ports:
+    - name: metrics
+      port: 9100
+      protocol: TCP
+      targetPort: 9100
+  selector:
+    app: 'prometheus'
+    component: 'nodeexporter'
+  type: 'ClusterIP'
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: 'prometheus'
+    component: 'nodeexporter'
+  name: 'prometheus-nodeexporter'

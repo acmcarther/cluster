@@ -1,0 +1,49 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: 'prometheus'
+    component: 'pushgateway'
+  name: 'prometheus-pushgateway'
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: 'prometheus'
+        component: 'pushgateway'
+    spec:
+      containers:
+        - name: 'prometheus-pushgateway'
+          image: 'prom/pushgateway:v0.4.0'
+          imagePullPolicy: 'IfNotPresent'
+          args: []
+          ports:
+            - containerPort: 9091
+          readinessProbe:
+            httpGet:
+              path: /#/status
+              port: 9091
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+          resources: {}
+      nodeSelector: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: 'prometheus'
+    component: 'pushgateway'
+  name: 'prometheus-pushgateway'
+spec:
+  externalIPs: []
+  ports:
+    - name: http
+      port: 9091
+      protocol: TCP
+      targetPort: 9091
+  selector:
+    app: 'prometheus'
+    component: 'pushgateway'
+  type: 'ClusterIP'
