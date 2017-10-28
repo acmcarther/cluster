@@ -1,0 +1,4 @@
+# Ignore deploy/secrets, except ones suffixed with "example".
+# In the future, these should be templates of some sort....
+deploy/secrets/**
+!deploy/secrets/**/*.example

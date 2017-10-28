@@ -1,0 +1,86 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: 'grafana'
+    component: 'grafana'
+  name: 'grafana'
+spec:
+  replicas: 1
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app: 'grafana'
+        component: 'grafana'
+    spec:
+      nodeSelector: {}
+      tolerations: []
+      containers:
+        - name: grafana
+          image: 'grafana/grafana:4.6.0'
+          imagePullPolicy: 'IfNotPresent'
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: 'grafana'
+                  key: grafana-admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: 'grafana'
+                  key: grafana-admin-password
+            - name: GF_INSTALL_PLUGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: grafana-config
+                  key: grafana-install-plugins
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: '/etc/grafana'
+            - name: dashboard-volume
+              mountPath: '/var/lib/grafana/dashboards'
+            - name: storage-volume
+              mountPath: '/var/lib/grafana'
+      terminationGracePeriodSeconds: 300
+      volumes:
+        - name: config-volume
+          configMap:
+            name: grafana-config
+        - name: dashboard-volume
+          configMap:
+            name: grafana-dashes
+        - name: storage-volume
+          persistentVolumeClaim:
+            claimName: 'grafana'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: 'grafana'
+    component: 'grafana'
+  name: 'grafana'
+spec:
+  ports:
+    - name: 'http'
+      port: 80
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app: 'grafana'
+    component: 'grafana'
+  type: 'ClusterIP'
