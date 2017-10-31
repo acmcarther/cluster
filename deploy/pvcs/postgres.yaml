@@ -1,0 +1,13 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "postgres"
+  labels:
+    app: "postgres"
+spec:
+  accessModes:
+    - 'ReadWriteOnce'
+  resources:
+    requests:
+      storage: 50G
+  storageClassName: 'nfs-slow'
