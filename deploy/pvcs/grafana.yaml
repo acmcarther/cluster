@@ -9,6 +9,7 @@ metadata:
 spec:
   accessModes:
     - 'ReadWriteOnce'
+  storageClassName: 'nfs-slow'
   resources:
     requests:
       storage: '1Gi'
