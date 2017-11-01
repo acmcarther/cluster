@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: 'concourse'
+  labels:
+    app: 'concourse'
+data:
+  postgresql-host: 'postgres'
+  postgresql-database: 'concourse'
+  concourse-atc-port: '8080'
+  concourse-tsa-host: 'concourse-ci-web'
+  concourse-tsa-port: '2222'
+  concourse-allow-self-signed-certificates: 'false'
+  concourse-auth-duration: '24h'
+  concourse-resource-checking-interval: '1m'
+  concourse-old-resource-grace-period: '5m'
+  concourse-resource-cache-cleanup-interval: '30s'
+  concourse-external-url: ''
+  concourse-baggageclaim-driver: 'naive'
+  garden-docker-registry: ''
+  garden-insecure-docker-registry: ''
+  github-auth-organization: ''
+  github-auth-team: ''
+  github-auth-user: ''
+  github-auth-auth-url: ''
+  github-auth-token-url: ''
+  github-auth-api-url: ''
+  gitlab-auth-group: ''
+  gitlab-auth-auth-url: ''
+  gitlab-auth-token-url: ''
+  gitlab-auth-api-url: ''
+  generic-oauth-display-name: ''
+  generic-oauth-auth-url: ''
+  generic-oauth-auth-url-param: ''
+  generic-oauth-scope: ''
+  generic-oauth-token-url: ''
+  worker-post-stop-delay-seconds: ''
+  worker-fatal-errors: |-
+    guardian.api.garden-server.create.failed
+    unknown handle

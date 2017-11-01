@@ -1,0 +1,230 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: 'concourse-ci-web'
+  labels:
+    app: 'concourse-ci-web'
+spec:
+  type: 'ClusterIP'
+  ports:
+    - name: atc
+      port: 8080
+      targetPort: atc
+    - name: tsa
+      port: 2222
+      targetPort: tsa
+  selector:
+    app: 'concourse-ci-web'
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: 'concourse-ci-web'
+  labels:
+    app: 'concourse-ci-web'
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: 'concourse-ci-web'
+    spec:
+      containers:
+        - name: 'concourse-ci-web'
+          image: 'concourse/concourse:3.5.0'
+          imagePullPolicy: 'IfNotPresent'
+          args:
+            - "web"
+          env:
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: postgresql-host
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: postgresql-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: 'postgres'
+                  key: postgres-password
+            - name: POSTGRES_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: postgresql-database
+            - name: CONCOURSE_POSTGRES_DATA_SOURCE
+              value: postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST)/$(POSTGRES_DATABASE)?sslmode=disable
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONCOURSE_BIND_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-atc-port
+            - name: CONCOURSE_PEER_URL
+              value: "http://$(POD_IP):$(CONCOURSE_BIND_PORT)"
+            - name: CONCOURSE_BASIC_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: basic-auth-username
+            - name: CONCOURSE_BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: basic-auth-password
+            - name: CONCOURSE_TSA_BIND_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-tsa-port
+            - name: CONCOURSE_ALLOW_SELF_SIGNED_CERTIFICATES
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-allow-self-signed-certificates
+            - name: CONCOURSE_AUTH_DURATION
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-auth-duration
+            - name: CONCOURSE_RESOURCE_CHECKING_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-resource-checking-interval
+            - name: CONCOURSE_OLD_RESOURCE_GRACE_PERIOD
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-old-resource-grace-period
+            - name: CONCOURSE_RESOURCE_CACHE_CLEANUP_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-resource-cache-cleanup-interval
+            - name: CONCOURSE_GITHUB_AUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: github-auth-client-id
+            - name: CONCOURSE_GITHUB_AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: github-auth-client-secret
+            - name: CONCOURSE_GITHUB_AUTH_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: github-auth-api-url
+            - name: CONCOURSE_GITLAB_AUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: gitlab-auth-client-id
+            - name: CONCOURSE_GITLAB_AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: gitlab-auth-client-secret
+            - name: CONCOURSE_GITLAB_AUTH_AUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: gitlab-auth-auth-url
+            - name: CONCOURSE_GITLAB_AUTH_TOKEN_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: gitlab-auth-token-url
+            - name: CONCOURSE_GITLAB_AUTH_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: gitlab-auth-api-url
+            - name: CONCOURSE_GENERIC_OAUTH_DISPLAY_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-display-name
+            - name: CONCOURSE_GENERIC_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-client-id
+            - name: CONCOURSE_GENERIC_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-client-secret
+            - name: CONCOURSE_GENERIC_OAUTH_AUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-auth-url
+            - name: CONCOURSE_GENERIC_OAUTH_AUTH_URL_PARAM
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-auth-url-param
+            - name: CONCOURSE_GENERIC_OAUTH_SCOPE
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-scope
+            - name: CONCOURSE_GENERIC_OAUTH_TOKEN_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: generic-oauth-token-url
+            - name: CONCOURSE_TSA_HOST_KEY
+              value: "/concourse-keys/host_key"
+            - name: CONCOURSE_SESSION_SIGNING_KEY
+              value: "/concourse-keys/session_signing_key"
+            - name: CONCOURSE_TSA_AUTHORIZED_KEYS
+              value: "/concourse-keys/worker_key.pub"
+          ports:
+            - name: atc
+              containerPort: 8080
+            - name: tsa
+              containerPort: 2222
+          livenessProbe:
+            httpGet:
+              path: /
+              port: atc
+            initialDelaySeconds: 120
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: atc
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+          volumeMounts:
+            - name: concourse-keys
+              mountPath: /concourse-keys
+              readOnly: true
+      affinity: {}
+      volumes:
+        - name: concourse-keys
+          secret:
+            secretName: 'concourse'
+            defaultMode: 0400
+            items:
+              - key: host-key
+                path: host_key
+              - key: session-signing-key
+                path: session_signing_key
+              - key: worker-key-pub
+                path: worker_key.pub

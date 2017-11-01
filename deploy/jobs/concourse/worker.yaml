@@ -1,0 +1,157 @@
+## A Headless Service is required when using a StatefulSet
+## ref: https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/
+##
+apiVersion: v1
+kind: Service
+metadata:
+  name: 'concourse-ci-worker'
+  labels:
+    app: 'concourse-ci-worker'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ## We do NOT expose any port as workers will forward connections with the ATC through a TSA reverse-tunnel
+  ## ref: https://concourse.ci/architecture.html#architecture-worker
+  ##
+  ports: []
+  selector:
+    app: 'concource-ci-worker'
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: 'concourse-ci-worker'
+  labels:
+    app: 'concourse-ci-worker'
+spec:
+  serviceName: 'concourse-ci-worker'
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: 'concourse-ci-worker'
+      annotations: {}
+    spec:
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: 'concourse-ci-worker'
+          image: 'concourse/concourse:3.5.0'
+          imagePullPolicy: 'IfNotPresent'
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - |-
+              cp /dev/null /concourse-work-dir/.liveness_probe
+              concourse worker --name=${HOSTNAME} | tee -a /concourse-work-dir/.liveness_probe
+              sleep ${POST_STOP_DELAY_SECONDS}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |-
+                  FATAL_ERRORS=$( echo "${LIVENESS_PROBE_FATAL_ERRORS}" | grep -q '\S' && \
+                      grep -F "${LIVENESS_PROBE_FATAL_ERRORS}" /concourse-work-dir/.liveness_probe )
+                  cp /dev/null /concourse-work-dir/.liveness_probe
+                  if [ ! -z "${FATAL_ERRORS}" ]; then
+                    >&2 echo "Fatal error detected: ${FATAL_ERRORS}"
+                    exit 1
+                  fi
+            failureThreshold: 1
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - "/bin/sh"
+                  - "-c"
+                  - "concourse retire-worker --name=${HOSTNAME}"
+          env:
+            - name: CONCOURSE_TSA_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-tsa-host
+            - name: CONCOURSE_TSA_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-tsa-port
+            - name: CONCOURSE_GARDEN_DOCKER_REGISTRY
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: garden-docker-registry
+            - name: CONCOURSE_GARDEN_INSECURE_DOCKER_REGISTRY
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: garden-insecure-docker-registry
+            - name: CONCOURSE_TSA_PUBLIC_KEY
+              value: "/concourse-keys/host_key.pub"
+            - name: CONCOURSE_TSA_WORKER_PRIVATE_KEY
+              value: "/concourse-keys/worker_key"
+            - name: CONCOURSE_WORK_DIR
+              value: "/concourse-work-dir"
+            - name: CONCOURSE_BAGGAGECLAIM_DRIVER
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: concourse-baggageclaim-driver
+            - name: POST_STOP_DELAY_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: worker-post-stop-delay-seconds
+            - name: LIVENESS_PROBE_FATAL_ERRORS
+              valueFrom:
+                configMapKeyRef:
+                  name: 'concourse'
+                  key: worker-fatal-errors
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '512Mi'
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: concourse-keys
+              mountPath: /concourse-keys
+              readOnly: true
+            - name: concourse-work-dir
+              mountPath: /concourse-work-dir
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: 'concourse-ci-worker'
+      volumes:
+        - name: concourse-keys
+          secret:
+            secretName: 'concourse'
+            defaultMode: 0400
+            items:
+              - key: host-key-pub
+                path: host_key.pub
+              - key: worker-key
+                path: worker_key
+              - key: worker-key-pub
+                path: worker_key.pub
+  volumeClaimTemplates:
+    - metadata:
+        name: concourse-work-dir
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+        storageClassName: 'nfs-slow'
+  updateStrategy:
+    type: RollingUpdate
