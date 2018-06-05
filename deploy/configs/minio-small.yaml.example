@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-small-config-cm
+  labels:
+    app: 'minio-small'
+data:
+  config.json: |-
+    {
+      "version": "19",
+      "credential": {
+        #"accessKey": {{ .Values.accessKey | quote }},
+        #"secretKey": {{ .Values.secretKey | quote }}
+      },
+      "region": "us-east-1",
+      "browser": "on",
+      "logger": {
+        "console": {
+          "enable": true
+        },
+        "file": {
+          "enable": false,
+          "fileName": ""
+        }
+      },
+    }

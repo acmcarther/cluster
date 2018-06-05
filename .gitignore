@@ -2,3 +2,6 @@
 # In the future, these should be templates of some sort....
 deploy/secrets/**
 !deploy/secrets/**/*.example
+
+deploy/configs/minio-small.yaml
+deploy/configs/minio-tiny.yaml

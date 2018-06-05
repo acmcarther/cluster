@@ -1,0 +1,13 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: 'openvpn'
+  labels:
+    app: 'openvpn'
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: '2M'
+  storageClassName: "nfs-slow"
